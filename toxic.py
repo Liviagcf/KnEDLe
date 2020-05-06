@@ -4,6 +4,8 @@ import matplotlib
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+# import nltk
+# nltk.download('stopwords')
 from nltk.corpus import stopwords
 stop_words = set(stopwords.words('english'))
 import seaborn as sns
@@ -12,6 +14,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.feature_extraction.text import TfidfVectorizer
 import matplotlib.gridspec as gridspec
 from sklearn.multiclass import OneVsRestClassifier
+from sklearn import metrics
 from sklearn.metrics import accuracy_score
 from sklearn.svm import LinearSVC
 from sklearn.metrics import multilabel_confusion_matrix
@@ -113,10 +116,22 @@ categories = ['toxic', 'severe_toxic', 'obscene', 'threat', 'insult', 'identity_
 comment = ['comment_text']
 
 NUM_QUESTIONS = 2
+ENCODING = 'utf-8'
+result_x = []
+result_y = []
 df = pd.read_csv("train.csv")
 
+# dfx = df[df.identity_hate == 1]
+# dfx = dfx[dfx.severe_toxic == 0]
+# dfx = dfx[dfx.obscene == 0]
+# dfx = dfx[dfx.threat == 0]
+# dfx = dfx[dfx.insult == 0]
+# dfx = dfx[dfx.identity_hate == 0]
+# print(dfx)
+#
+# print(df)
 
-bin_clf = LinearSVC(loss='l2', penalty='l2',dual=False, tol=1e-3)
+bin_clf = LinearSVC(class_weight='balanced')
 clf = OneVsRestClassifier(bin_clf)#, n_jobs = -1)
 
 
@@ -164,17 +179,17 @@ while(True):
 
 
   question_samples = benchmark()
-  result_x.append(clf_test())
+  result_x.append(clfTest())
   result_y.append(df_labeled.toxic.size)
 
 
 
 
-  if df_train.pol.size < 2000:
+  if df_train.toxic.size < 200:
     insert = {'toxic':[], 'severe_toxic':[], 'obscene':[], 'threat':[], 'insult':[], 'identity_hate':[],'comment_text':[]}
     cont = 0
     for i in question_samples:
-      
+
       try:
         insert["toxic"].insert(cont,df_unlabeled.toxic[i])
         insert["severe_toxic"].insert(cont,df_unlabeled.severe_toxic[i])
