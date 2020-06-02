@@ -1,0 +1,29 @@
+[MASTER]
+
+# A comma-separated list of package or module names from where C extensions may
+# be loaded. Extensions are loading into the active Python interpreter and may
+# run arbitrary code.
+extension-pkg-whitelist=PyQt5
+
+[BASIC]
+
+# Naming style matching correct module names.
+module-naming-style=snake_case
+
+# Naming style matching correct class names.
+class-naming-style=camelCase
+
+# Naming style matching correct attribute names.
+attr-naming-style=snake_case
+
+# Naming style matching correct function names.
+function-naming-style=camelCase
+
+# Include a hint for the correct naming format with invalid-name.
+include-naming-hint=yes
+
+# Naming style matching correct method names.
+method-naming-style=camelCase
+
+# Naming style matching correct variable names.
+variable-naming-style=snake_case
