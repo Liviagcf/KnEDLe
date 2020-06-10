@@ -14,6 +14,9 @@ import numpy as np
 #from sklearn.feature_selection import SelectKBest, chi2
 #from sklearn.linear_model import RidgeClassifier
 from sklearn.svm import LinearSVC
+from sklearn.svm import SVC
+from sklearn.multiclass import OneVsRestClassifier
+from sklearn.calibration import CalibratedClassifierCV
 #from sklearn import svm
 #from sklearn.utils.extmath import density
 from sklearn import metrics
@@ -52,14 +55,29 @@ def cleanText(text):
 def benchmark():
     '''Processamento do conjunto de treinamento e escolha dos exemplos a serem rotulados'''
 
+    estimator.fit(X_train, y_train)
     clf.fit(X_train, y_train)
 
-    confidences = clf.decision_function(X_unlabeled)
+    confidences = estimator.decision_function(X_unlabeled)
+    print('Labeled examples: ', df_train.label.size)
+    # print('********************CONFIDENCES*******************', confidences)
+    probabilities = clf.predict_proba(X_unlabeled)
+    # print('********************PROBABILITIES*******************')
+    # print(probabilities)
+
+    BvSB = []
+    for list in probabilities:
+        list = list.tolist()
+        best = list.pop(list.index(max(list)))
+        second_best = list.pop(list.index(max(list)))
+        BvSB.append(best-second_best)
 
     df = pd.DataFrame(clf.predict(X_unlabeled))
-    df = df.assign(conf = confidences.max(1))
+    # df = df.assign(conf = confidences.max(1))
+    df = df.assign(conf = BvSB)
     df.columns = ['label', 'conf']
-    df.sort_values(by=['conf'], ascending=False, inplace=True)
+    # df.sort_values(by=['conf'], ascending=False, inplace=True)
+    df.sort_values(by=['conf'], ascending=True, inplace=True)
     question_samples = []
 
     for category in categories:
@@ -85,10 +103,11 @@ def clfTest():
 
 
 
-clf = LinearSVC(loss='squared_hinge', penalty='l2', dual=False, tol=1e-3)
+estimator = LinearSVC(loss='squared_hinge', penalty='l2', dual=False, tol=1e-3, class_weight='balanced')
+clf = CalibratedClassifierCV(base_estimator=estimator, cv=2)
 
 # Quantidade de requisicoes de rotulos para o oraculo que serao feitas por vez
-NUM_QUESTIONS = 2
+NUM_QUESTIONS = 3
 categories = [
     'secretaria de estado de seguranca publica',
     'secretaria de estado de cultura',
@@ -119,10 +138,12 @@ df = pd.read_csv(PATH_TRAIN,encoding = ENCODING,header = 0)
 df['label'] = df['label'].map(lambda com: cleanText(com))
 df['text'] = df['text'].map(lambda com: cleanText(com))
 
+categories = df.label.unique()
+
 """Divisao do dataset entre informacoes de treinamento e teste:"""
 
-df_test = df.sample(frac = 0.33, random_state = 1)
-# df_test = df.sample(n=600, random_state = 1)
+# df_test = df.sample(frac = 0.33, random_state = 1)
+df_test = df.sample(n=100, random_state = 1)
 
 df_train = df.drop(index = df_test.index)
 
@@ -138,9 +159,10 @@ MAX_SIZE = df_train.label.size
 
 df_labeled = pd.DataFrame()
 
-for categorie in categories:
-    df_labeled = df_labeled.append( df_train[df_train.label==categorie][0:1], ignore_index=True )
-    df_train.drop(index = df_train[df_train.label==categorie][0:1].index, inplace=True)
+for index, category in enumerate(categories):
+    df_labeled = df_labeled.append( df_train[df_train.label==category][0:3], ignore_index=True )
+    df_train.drop(index = df_train[df_train.label==category][0:3].index, inplace=True)
+    print(index)
 
 df_unlabeled = df_train
 
@@ -168,8 +190,7 @@ while True:
     result_x.append(clfTest())
     result_y.append(df_train.label.size)
 
-    if (df_train.label.size < MAX_SIZE - (len(categories) * NUM_QUESTIONS + 1)) and ((len(result_x) < 2) or ( (result_x[-1] - result_x[-2] > 0.005) or (result_x[-1] < result_x[-2]) )):
-        print('Labeled examples: ', df_train.label.size)
+    if (df_train.label.size < MAX_SIZE - (len(categories) * NUM_QUESTIONS + 1)) and ((len(result_x) < 2) or ( (result_x[-1] - result_x[-2] > -1) or (result_x[-1] < result_x[-2]) )):
         insert = {'label':[], 'text':[]}
         cont = 0
         for i in question_samples:
@@ -199,7 +220,7 @@ while True:
 
         result = pd.DataFrame(result_y)
         result = result.assign(y=result_x)
-        np.savetxt('tweets_results.txt', result, fmt='%f')
+        np.savetxt('results.txt', result, fmt='%f')
 
         break
 
